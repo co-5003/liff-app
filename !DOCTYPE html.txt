@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIFFアプリ</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+    <h2>シリアル番号送信</h2>
+    <button id="scanQR">QRコードをスキャン</button>
+    <button id="send" disabled>シリアル番号を送る</button>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwifWpGly2MBpzxJWo7ik5QqkjKIEGD88_lQSH9U-f86bSWLBP9wt_N44DkISxM6jb-/exec"; // ここにGASのURLを貼る
+
+        document.addEventListener("DOMContentLoaded", function() {
+            liff.init({ liffId: "2007046643-W6QOGlYV" })
+                .then(() => {
+                    if (!liff.isLoggedIn()) {
+                        liff.login();
+                    }
+                });
+
+            document.getElementById("scanQR").addEventListener("click", function() {
+                liff.scanCode().then(result => {
+                    const spotId = result.value; // QRコードの値（通し番号）
+                    fetch(GAS_URL + "?id=" + spotId) // APIリクエスト
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.serial) {
+                                sessionStorage.setItem("serialNumber", data.serial);
+                                alert("シリアル番号取得成功: " + data.serial);
+                                document.getElementById("send").disabled = false;
+                            } else {
+                                alert("シリアル番号が見つかりません");
+                            }
+                        })
+                        .catch(err => alert("エラー: " + err));
+                }).catch(err => alert("QRコードスキャンエラー: " + err));
+            });
+
+            document.getElementById("send").addEventListener("click", function() {
+                const serial = sessionStorage.getItem("serialNumber");
+
+                liff.sendMessages([
+                    {
+                        type: "text",
+                        text: `あなたのシリアル番号: ${serial}`
+                    }
+                ]).then(() => {
+                    alert("メッセージが送信されました");
+                    liff.closeWindow();
+                }).catch(err => alert("送信エラー: " + err));
+            });
+        });
+    </script>
+</body>
+</html>
